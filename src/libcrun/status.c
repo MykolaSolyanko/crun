@@ -115,9 +115,12 @@ read_pid_stat (pid_t pid, struct pid_stat *st, libcrun_error_t *err)
 
   sprintf (pid_stat_file, "/proc/%d/stat", pid);
 
+  printf("pid_stat_file: %s\n", pid_stat_file);
+  
   fd = open (pid_stat_file, O_RDONLY);
   if (fd < 0)
     {
+      printf("open failed\n");
       /* The process already exited.  */
       if (errno == ENOENT || errno == ESRCH)
         {
@@ -127,15 +130,20 @@ read_pid_stat (pid_t pid, struct pid_stat *st, libcrun_error_t *err)
       return crun_make_error (err, errno, "open state file %s", pid_stat_file);
     }
 
+  printf("open success\n");
+
   ret = read_all_fd (fd, pid_stat_file, &buffer, NULL, err);
   if (ret < 0)
     {
+      printf("read_all_fd failed\n");
       st->starttime = 0;
       st->state = 'X';
       /* The process already exited.  */
       libcrun_error_release (err);
       return 0;
     }
+
+  printf("read_all_fd success\n");
 
   s = NULL;
 
@@ -163,6 +171,8 @@ read_pid_stat (pid_t pid, struct pid_stat *st, libcrun_error_t *err)
   st->starttime = strtoull (it, NULL, 10);
   if (errno != 0)
     return crun_make_error (err, errno, "parse process start time");
+
+  printf("starttime: %llu\n", st->starttime);
 
   return 0;
 }
@@ -613,16 +623,29 @@ libcrun_check_pid_valid (libcrun_container_status_t *status, libcrun_error_t *er
   struct pid_stat st;
   int ret;
 
+  printf("libcrun_check_pid_valid\n");
+
   /* For backwards compatibility, check start time only if available. */
   if (! status->process_start_time)
+  {
+    printf("status->process_start_time is 0\n");
     return 1;
+  }
 
   ret = read_pid_stat (status->pid, &st, err);
   if (UNLIKELY (ret < 0))
+  {
+    printf("read_pid_stat failed\n");
     return ret;
+  }
 
   if (status->process_start_time != st.starttime || st.state == 'Z' || st.state == 'X')
+  {
+    printf("status->process_start_time != st.starttime\n");
     return 0; /* stopped */
+  }
+
+  printf("status->process_start_time == st.starttime\n");
 
   return 1; /* running, created, or paused */
 }
@@ -634,10 +657,18 @@ libcrun_is_container_running (libcrun_container_status_t *status, libcrun_error_
 
   ret = kill (status->pid, 0);
   if (UNLIKELY (ret < 0) && errno != ESRCH)
+  {
+    printf("kill failed\n");
+
     return crun_make_error (err, errno, "kill");
+  }
 
   if (ret == 0)
+  {
+    printf("kill success\n");
+
     return libcrun_check_pid_valid (status, err);
+  }
 
   return 0; /* stopped */
 }

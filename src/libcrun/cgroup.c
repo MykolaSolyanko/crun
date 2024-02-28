@@ -146,33 +146,61 @@ libcrun_cgroup_is_container_paused (struct libcrun_cgroup_status *status, bool *
   int cgroup_mode;
   int ret;
 
+  printf("cgroup_path: %s\n", cgroup_path);
+
   if (cgroup_path == NULL || cgroup_path[0] == '\0')
     return 0;
 
+
   cgroup_mode = libcrun_get_cgroup_mode (err);
   if (UNLIKELY (cgroup_mode < 0))
+  {
+    printf("cgroup_mode < 0\n");
     return cgroup_mode;
+  }
+
+  printf("cgroup_mode: %d\n", cgroup_mode);
 
   if (cgroup_mode == CGROUP_MODE_UNIFIED)
     {
+      printf("cgroup_mode == CGROUP_MODE_UNIFIED\n");
+
       state = "1";
 
       ret = append_paths (&path, err, CGROUP_ROOT, cgroup_path, "cgroup.freeze", NULL);
       if (UNLIKELY (ret < 0))
+      {
+        printf("append_paths ret < 0\n");
+
         return ret;
+      }
     }
   else
     {
+      printf("cgroup_mode != CGROUP_MODE_UNIFIED\n");
+
       state = "FROZEN";
 
       ret = append_paths (&path, err, CGROUP_ROOT "/freezer", cgroup_path, "freezer.state", NULL);
       if (UNLIKELY (ret < 0))
+      {
+        printf("append_paths ret < 0\n");
+
         return ret;
+      }
     }
+
+  printf("path: %s\n", path);
 
   ret = read_all_file (path, &content, NULL, err);
   if (UNLIKELY (ret < 0))
+  {
+    printf("read_all_file ret < 0\n");
+
     return ret;
+  }
+
+  printf("content: %s\n", content);
 
   *paused = strstr (content, state) != NULL;
   return 0;

@@ -2875,21 +2875,29 @@ libcrun_get_container_state_string (const char *id, libcrun_container_status_t *
   int ret, has_fifo = 0;
   bool paused = false;
 
+  printf ("libcrun_get_container_state_string 1\n");
+
   ret = libcrun_is_container_running (status, err);
   if (UNLIKELY (ret < 0))
-    return ret;
+    {
+      printf ("libcrun_is_container_running failed\n");
+      return ret;
+    }
   *running = ret;
 
   if (*running)
     {
+      printf ("libcrun_get_container_state_string 2\n");
       ret = libcrun_status_has_read_exec_fifo (state_root, id, err);
       if (UNLIKELY (ret < 0))
         return ret;
       has_fifo = ret;
     }
 
+  printf ("libcrun_get_container_state_string 3\n");
   if (*running && ! has_fifo)
     {
+      printf ("libcrun_get_container_state_string 4\n");
       cleanup_cgroup_status struct libcrun_cgroup_status *cgroup_status = NULL;
 
       cgroup_status = libcrun_cgroup_make_status (status);
@@ -2897,6 +2905,7 @@ libcrun_get_container_state_string (const char *id, libcrun_container_status_t *
       ret = libcrun_cgroup_is_container_paused (cgroup_status, &paused, err);
       if (UNLIKELY (ret < 0))
         {
+          printf ("libcrun_cgroup_is_container_paused failed\n");
           /*
             The cgroup might have been cleaned up by the time we try to read it, ignore both
             ENOENT and ENODEV:
@@ -2907,6 +2916,7 @@ libcrun_get_container_state_string (const char *id, libcrun_container_status_t *
           errno = crun_error_get_errno (err);
           if (errno == ENOENT || errno == ENODEV)
             {
+              printf ("libcrun_get_container_state_string 5\n");
               crun_error_release (err);
               *container_status = "stopped";
               return 0;
@@ -2924,6 +2934,8 @@ libcrun_get_container_state_string (const char *id, libcrun_container_status_t *
     *container_status = "paused";
   else
     *container_status = "running";
+
+  printf ("container_status: %s\n", *container_status);
 
   return 0;
 }
